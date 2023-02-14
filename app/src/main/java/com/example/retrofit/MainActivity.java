@@ -8,11 +8,16 @@ import android.widget.TextView;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -40,6 +45,17 @@ public class MainActivity extends AppCompatActivity {
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .addInterceptor(new Interceptor() {
+                    @NotNull
+                    @Override
+                    public okhttp3.Response intercept(@NotNull Chain chain) throws IOException {
+                        Request originalRequest = chain.request();
+                        Request newRequest = originalRequest.newBuilder()
+                                .header("InterceptorHeader", "xyz")
+                                .build();
+                        return chain.proceed(newRequest);
+                    }
+                })
                 .addInterceptor(loggingInterceptor)
                 .build();
 
@@ -51,10 +67,10 @@ public class MainActivity extends AppCompatActivity {
                 .build();
         jsonPlaceHolderAPI = retrofit.create(JsonPlaceHolderAPI.class);
 
-        //getPosts();
+        getPosts();
         //getComments("posts/3/comments");
         //createPost();
-        updatePost();
+        //updatePost();
         //deletePost();
     }
 
@@ -167,7 +183,11 @@ public class MainActivity extends AppCompatActivity {
     private void updatePost() {
         Post post = new Post(12, null, "new text");
 
-        Call<Post> call = jsonPlaceHolderAPI.putPost(5, post);
+        Map<String, String > headers = new HashMap<>();
+        headers.put("Dynamic-one", "Header one");
+        headers.put("Dynamic-two", "header two");
+
+        Call<Post> call = jsonPlaceHolderAPI.patchPost( 5, post, headers);
 
         call.enqueue(new Callback<Post>() {
             @Override
