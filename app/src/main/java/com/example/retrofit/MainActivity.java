@@ -5,10 +5,15 @@ import android.os.Bundle;
 import android.widget.ListAdapter;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -27,16 +32,34 @@ public class MainActivity extends AppCompatActivity {
 
         result = findViewById(R.id.results);
 
+        //Customizing Gson to serialize null values
+        Gson gson = new GsonBuilder().serializeNulls().create();
+
+        //Adding Okhttp ..
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
+        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .addInterceptor(loggingInterceptor)
+                .build();
+
+        //Setting up Retrofit
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://jsonplaceholder.typicode.com")
-                .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create(gson)) // we pass gson to create function for customizing
+                .client(okHttpClient)
                 .build();
         jsonPlaceHolderAPI = retrofit.create(JsonPlaceHolderAPI.class);
 
         //getPosts();
         //getComments("posts/3/comments");
-        createPost();
+        //createPost();
+        updatePost();
+        //deletePost();
     }
+
+
+
 
     private void getPosts() {
 
@@ -109,7 +132,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void createPost() {
         Post post = new Post(23, "New Title", "New text");
-        Call<Post> call = jsonPlaceHolderAPI.createPost(post);
+
+        Map<String, String> fields = new HashMap<>();
+        fields.put("userId", "25");
+        fields.put("title", "New Title");
+
+        Call<Post> call = jsonPlaceHolderAPI.createPost(fields);
 
         call.enqueue(new Callback<Post>() {
             @Override
@@ -136,4 +164,51 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    private void updatePost() {
+        Post post = new Post(12, null, "new text");
+
+        Call<Post> call = jsonPlaceHolderAPI.putPost(5, post);
+
+        call.enqueue(new Callback<Post>() {
+            @Override
+            public void onResponse(Call<Post> call, Response<Post> response) {
+                if (!response.isSuccessful()) {
+                    result.setText("Code : " + response.code());
+                    return;
+                }
+                Post postResponse = response.body();
+
+                String content = "";
+                content += "Code Response : "+ response.code() + "\n";
+                content += "ID: " + postResponse.getId() + "\n";
+                content += "userID: " + postResponse.getUserId() + "\n";
+                content += "Title: " + postResponse.getTitle() + "\n";
+                content += "Text: " + postResponse.getText() + "\n\n\n";
+
+                result.setText(content);
+            }
+
+            @Override
+            public void onFailure(Call<Post> call, Throwable t) {
+                result.setText(t.getMessage());
+            }
+        });
+    }
+    private void deletePost() {
+        Call<Void> call = jsonPlaceHolderAPI.deletePost(5);
+
+        call.enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                result.setText("Code : " + response.code());
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                result.setText(t.getMessage());
+            }
+        });
+    }
+
+
 }
